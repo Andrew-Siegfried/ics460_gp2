@@ -55,7 +55,7 @@ public class Sender{
 
                 while(missedPacket) {
 
-                    byte[] packetData = new Packet((short) 0,(short) (buffer.length + 12), 0, seqno, buffer).getData(buffer.length);
+					byte[] packetData = new Packet((short) 0,(short) (buffer.length + 12), 0, seqno, buffer).getData();
 
                     DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, 4445);
                     socket.send(packet);
