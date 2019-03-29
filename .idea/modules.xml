@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/ICS460_P2_Receiver/ICS460_P2_Receiver.iml" filepath="$PROJECT_DIR$/ICS460_P2_Receiver/ICS460_P2_Receiver.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ICS460_P2_Sender/ICS460_P2_Sender.iml" filepath="$PROJECT_DIR$/ICS460_P2_Sender/ICS460_P2_Sender.iml" />
+    </modules>
+  </component>
+</project>
