@@ -3,7 +3,8 @@ package edu.metrostate.ics460.gp2;
 import java.io.*;
 
 public class Packet implements Serializable {
-    short cksum; //16-bit 2-byte
+	private static final long serialVersionUID = 1L;
+	short cksum; //16-bit 2-byte
     short len;    //16-bit 2-byte
     int ackno;    //32-bit 4-byte
     int seqno;    //32-bit 4-byte Data packet Only
