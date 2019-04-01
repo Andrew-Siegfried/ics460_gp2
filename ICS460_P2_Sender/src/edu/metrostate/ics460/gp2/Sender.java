@@ -52,7 +52,7 @@ public class Sender{
                 buffer = Arrays.copyOfRange(buffer, 0 ,bytesRead); //prevents garbage data in last packet
                 missedPacket = true;
                 boolean droppedPacket = false;
-                //int lastAck = -1;
+                int lastAck = -1;
                 while(missedPacket) {
                 	
                 	if (Math.random() > corrupt_data) {
@@ -64,8 +64,14 @@ public class Sender{
 	                    DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);
 	                    socket.send(packet);
 	                    String text = String.format("SENDing %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+	                    if(Packet.generatePacket(packetData).cksum != 0) {
+	                    	text = String.format("SENDing. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+	                    }
 	                    if(droppedPacket) {
 	                    	text = String.format("ReSend. %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+	                    	if(Packet.generatePacket(packetData).cksum != 0) {
+		                    	text = String.format("ReSend. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+		                    }
 	                    }
 	                    droppedPacket = false;
 	                    missedPacket = false;
@@ -74,7 +80,21 @@ public class Sender{
 	                    try {
 	                        DatagramPacket responsePacket = new DatagramPacket(buffer, buffer.length);
 	                        socket.receive(responsePacket);
-	                        System.out.println(String.format("AckRcvd %d MoveWnd", seqno));
+	                        Packet truePacket = Packet.generatePacket(responsePacket.getData());
+	                        
+	                        String ackText = String.format("AckRcvd %d MoveWnd", seqno);
+	                        if(truePacket.cksum != 0) {
+	                        	ackText = String.format("AckRcvd %d ErrAck", seqno);
+	                        }
+	                        
+	                        /*if(truePacket.ackno == lastAck) {
+	                        	ackText = String.format("AckRcvd %d DuplAck", seqno);
+	                        }*/ //not working because not correct info is returned
+	                        
+	                        lastAck = truePacket.ackno;
+	                        
+	                        System.out.println(ackText);
+	                        System.out.println(String.format("Ack INFO: %d %d %d", truePacket.cksum,truePacket.len,truePacket.ackno));
 	                        seqno++;
 	                        //need dup ACK, err ACK, ERR in send
 	                    } catch (SocketTimeoutException ex) {

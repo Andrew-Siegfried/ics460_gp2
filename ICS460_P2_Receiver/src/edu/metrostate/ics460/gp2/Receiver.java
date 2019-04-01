@@ -71,6 +71,15 @@ public class Receiver{
                 	if(droppedPacket) {
                     	text = String.format("DUPL %s %d RECV", getTime(), packets);
                     }
+                	
+                	if(truePacket.cksum != 0) {
+                    	text = String.format("RECV %s %d CRPT", getTime(), packets);
+                    }
+                	
+                	if(truePacket.seqno != packets) {
+                    	text = String.format("RECV %s %d !seq", getTime(), packets);
+                    }
+                	
                 	droppedPacket = false;
                     System.out.println(text);
                 	byteArrayOutputStream.write(truePacket.data);
@@ -79,6 +88,7 @@ public class Receiver{
                     Packet response = new Packet((short) 0, (short) 8, truePacket.seqno);
                     byte[] responseData = response.getData();
                     
+                    System.out.println(String.format("SENDing ACKno %d ", response.ackno)); //test print
                     InetAddress return_address = packet.getAddress();
                     DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, return_address, packet.getPort());
                     socket.send(responsePacket);
