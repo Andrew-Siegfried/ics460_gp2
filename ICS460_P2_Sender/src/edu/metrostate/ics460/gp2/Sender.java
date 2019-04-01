@@ -25,7 +25,7 @@ public class Sender{
      * Public constructor that creates a new socket on the local network
      */
     public Sender() {
-    	startTime = System.nanoTime();
+        startTime = System.nanoTime();
         try {
             socket = new DatagramSocket();
             socket.setSoTimeout(timeout);
@@ -52,40 +52,61 @@ public class Sender{
                 buffer = Arrays.copyOfRange(buffer, 0 ,bytesRead); //prevents garbage data in last packet
                 missedPacket = true;
                 boolean droppedPacket = false;
-                //int lastAck = -1;
+                int lastAck = -1;
                 while(missedPacket) {
-                	
-                	if (Math.random() > corrupt_data) {
-                		
-                		
 
-						byte[] packetData = new Packet((short) 0,(short) (buffer.length + 12), 0, seqno, buffer).getData();
-	
-	                    DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);
-	                    socket.send(packet);
-	                    String text = String.format("SENDing %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
-	                    if(droppedPacket) {
-	                    	text = String.format("ReSend. %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
-	                    }
-	                    droppedPacket = false;
-	                    missedPacket = false;
-	
-	                    System.out.println(text);
-	                    try {
-	                        DatagramPacket responsePacket = new DatagramPacket(buffer, buffer.length);
-	                        socket.receive(responsePacket);
-	                        System.out.println(String.format("AckRcvd %d MoveWnd", seqno));
-	                        seqno++;
-	                        //need dup ACK, err ACK, ERR in send
-	                    } catch (SocketTimeoutException ex) {
-	                        //seqno--;
-	                        System.out.println("TimeOut " + seqno);
-	                        missedPacket = true;
-	                    }
-                	} else {
-                		System.out.println(String.format("SENDing %d %d:%d %s DROP", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime()));
-                		droppedPacket = true;
-                	}
+                    if (Math.random() > corrupt_data) {
+
+
+
+                        byte[] packetData = new Packet((short) 0,(short) (buffer.length + 12), 0, seqno, buffer).getData();
+
+                        DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);
+                        socket.send(packet);
+                        String text = String.format("SENDing %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+                        if(Packet.generatePacket(packetData).cksum != 0) {
+                            text = String.format("SENDing. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+                        }
+                        if(droppedPacket) {
+                            text = String.format("ReSend. %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+                            if(Packet.generatePacket(packetData).cksum != 0) {
+                                text = String.format("ReSend. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+                            }
+                        }
+                        droppedPacket = false;
+                        missedPacket = false;
+
+                        System.out.println(text);
+                        try {
+                            byte arr[] = new byte[1000]; //fixes not getting data from ACK
+                            DatagramPacket responsePacket = new DatagramPacket(arr, arr.length);
+                            socket.receive(responsePacket);
+                            Packet responseACK = Packet.generatePacket(responsePacket.getData());
+
+                            String ackText = String.format("AckRcvd %d MoveWnd", seqno);
+                            if(responseACK.cksum != 0) {
+                                ackText = String.format("AckRcvd %d ErrAck", seqno);
+                            }
+	                        
+	                        if(responseACK.ackno == lastAck) {
+	                        	ackText = String.format("AckRcvd %d DuplAck", seqno);
+	                        } //not working because not correct info is returned
+
+                            lastAck = responseACK.ackno;
+
+                            System.out.println(ackText);
+                            System.out.println(String.format("Ack INFO: %d %d %d", responseACK.cksum,responseACK.len,responseACK.ackno));
+                            seqno++;
+                            //need dup ACK, err ACK, ERR in send
+                        } catch (SocketTimeoutException ex) {
+                            //seqno--;
+                            System.out.println("TimeOut " + seqno);
+                            missedPacket = true;
+                        }
+                    } else {
+                        System.out.println(String.format("SENDing %d %d:%d %s DROP", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime()));
+                        droppedPacket = true;
+                    }
                 }
             }
 
@@ -99,21 +120,21 @@ public class Sender{
             ex.printStackTrace();
         }
     }
-    
+
     public String getTime() {
-    	long milliseconds = (System.nanoTime() - startTime) / 1000000;
-    	
-    	//return String.format("%02d:%02d.%d", ((milliseconds / (1000 * 60)) % 60), ((milliseconds / 1000) % 60), (milliseconds % 1000));
-    	return String.valueOf(milliseconds);
+        long milliseconds = (System.nanoTime() - startTime) / 1000000;
+
+        //return String.format("%02d:%02d.%d", ((milliseconds / (1000 * 60)) % 60), ((milliseconds / 1000) % 60), (milliseconds % 1000));
+        return String.valueOf(milliseconds);
     }
 
     public static void main(String[] args) {
         try {
-			address = InetAddress.getByName("localhost"); //assign localhost as default
-		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+            address = InetAddress.getByName("localhost"); //assign localhost as default
+        } catch (UnknownHostException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
         if (args.length < 1) {
             System.out.println("You can provide specifications for size of packet, timeout, ip address/port and percent of corrupt data.");
         }
