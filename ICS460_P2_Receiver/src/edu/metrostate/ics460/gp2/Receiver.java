@@ -44,13 +44,13 @@ public class Receiver{
         running = true;
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         boolean droppedPacket = false;
+        boolean damagePacket = false;
         while (running) { //loop until the end of the data is received
             try {
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
                 socket.receive(packet);
                 Packet truePacket = Packet.generatePacket(packet.getData());
-
 
                 //If final statement, stop running
                 for (byte b : packet.getData()) {
@@ -64,9 +64,12 @@ public class Receiver{
                     continue;
                 }
 
-                //Return ACK
-                if (Math.random() > corrupt_data) {
-                	
+                if (Math.random() < corrupt_data) {
+                	damagePacket = true;
+                }
+                
+                if(damagePacket == false) { //Return ACK CLEAN - if packet is not corrupt
+                	boolean damaged = false;
                 	String text = String.format("RECV %s %d RECV", getTime(), packets);
                 	if(droppedPacket) {
                     	text = String.format("DUPL %s %d RECV", getTime(), packets);
@@ -74,29 +77,51 @@ public class Receiver{
                 	
                 	if(truePacket.cksum != 0) {
                     	text = String.format("RECV %s %d CRPT", getTime(), packets);
+                    	if(droppedPacket) {
+                        	text = String.format("DUPL %s %d CRPT", getTime(), packets);
+                        }
+                    	damaged = true;
                     }
                 	
                 	if(truePacket.seqno != packets) {
                     	text = String.format("RECV %s %d !seq", getTime(), packets);
+                    	if(droppedPacket) {
+                        	text = String.format("DUPL %s %d !seq", getTime(), packets);
+                        }
+                    	damaged = true;
                     }
                 	
                 	droppedPacket = false;
                     System.out.println(text);
-                	byteArrayOutputStream.write(truePacket.data);
-                	System.out.println(String.format("SENDing ACK %d %s SENT", packets,getTime()));
-                	packets++;
-                    Packet response = new Packet((short) 0, (short) 8, truePacket.seqno);
-                    byte[] responseData = response.getData();
-                    
-                    System.out.println(String.format("SENDing ACKno %d ", response.ackno)); //test print
-                    InetAddress return_address = packet.getAddress();
-                    DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, return_address, packet.getPort());
-                    socket.send(responsePacket);
+                    if (damaged == false) {
+	                	byteArrayOutputStream.write(truePacket.data);
+	                	System.out.println(String.format("SENDing ACK %d %s SENT", packets,getTime()));
+	                	packets++;
+	                    Packet response = new Packet((short) 0, (short) 8, truePacket.seqno);
+	                    byte[] responseData = response.getData();
+	                    
+	                    //System.out.println(String.format("SENDing ACKno %d ", response.ackno)); //test print
+	                    InetAddress return_address = packet.getAddress();
+	                    DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, return_address, packet.getPort());
+	                    socket.send(responsePacket);
+                    }
                 } else {
-                	System.out.println(String.format("SENDing ACK %d %s DROP", packets,getTime()));
-                	droppedPacket = true;
+                	//Damage the packet here, either send ACK as corrupt OR drop it from source.
+                	if (Math.random() < 0.5) { //50% we corrupt and send
+                		
+                		Packet response = new Packet((short) 1, (short) 8, truePacket.seqno);
+	                    byte[] responseData = response.getData();
+	                    InetAddress return_address = packet.getAddress();
+	                    DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, return_address, packet.getPort());
+	                    socket.send(responsePacket);
+                        
+	                    System.out.println(String.format("SENDing ACK %d %s ERR", packets,getTime()));
+                	} else { //50% we drop from source
+                		System.out.println(String.format("SENDing ACK %d %s DROP", packets,getTime()));
+                    	droppedPacket = true;
+                	}
                 }
-      
+                damagePacket = false;
                 buffer = new byte[BUFFER_SIZE];
             } catch (IOException ex) {
                 ex.printStackTrace();

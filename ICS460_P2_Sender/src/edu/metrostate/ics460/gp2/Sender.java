@@ -52,32 +52,30 @@ public class Sender{
                 buffer = Arrays.copyOfRange(buffer, 0 ,bytesRead); //prevents garbage data in last packet
                 missedPacket = true;
                 boolean droppedPacket = false;
+                boolean damagePacket = false;
                 int lastAck = -1;
                 while(missedPacket) {
 
-                    if (Math.random() > corrupt_data) {
-
-
-
+                    if (Math.random() < corrupt_data) {
+                    	damagePacket = true;
+                    }
+                    
+                    if(damagePacket == false) {
                         byte[] packetData = new Packet((short) 0,(short) (buffer.length + 12), 0, seqno, buffer).getData();
 
                         DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);
                         socket.send(packet);
                         String text = String.format("SENDing %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
-                        if(Packet.generatePacket(packetData).cksum != 0) {
-                            text = String.format("SENDing. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
-                        }
+                        
                         if(droppedPacket) {
                             text = String.format("ReSend. %d %d:%d %s SENT", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
-                            if(Packet.generatePacket(packetData).cksum != 0) {
-                                text = String.format("ReSend. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
-                            }
                         }
                         droppedPacket = false;
                         missedPacket = false;
 
                         System.out.println(text);
                         try {
+                        	boolean damaged = false;
                             byte arr[] = new byte[1000]; //fixes not getting data from ACK
                             DatagramPacket responsePacket = new DatagramPacket(arr, arr.length);
                             socket.receive(responsePacket);
@@ -86,27 +84,44 @@ public class Sender{
                             String ackText = String.format("AckRcvd %d MoveWnd", seqno);
                             if(responseACK.cksum != 0) {
                                 ackText = String.format("AckRcvd %d ErrAck", seqno);
+                                damaged = true;
                             }
 	                        
 	                        if(responseACK.ackno == lastAck) {
 	                        	ackText = String.format("AckRcvd %d DuplAck", seqno);
-	                        } //not working because not correct info is returned
-
-                            lastAck = responseACK.ackno;
-
-                            System.out.println(ackText);
-                            System.out.println(String.format("Ack INFO: %d %d %d", responseACK.cksum,responseACK.len,responseACK.ackno));
-                            seqno++;
-                            //need dup ACK, err ACK, ERR in send
+	                        	damaged = true;
+	                        } 
+	                        System.out.println(ackText);
+	                        if(damaged == false) {
+	                        	 lastAck = responseACK.ackno;
+	                             //System.out.println(String.format("Ack INFO: %d %d %d", responseACK.cksum,responseACK.len,responseACK.ackno));
+	                             seqno++;
+	                        } else {
+	                        	missedPacket = true;
+	                        }
                         } catch (SocketTimeoutException ex) {
-                            //seqno--;
                             System.out.println("TimeOut " + seqno);
                             missedPacket = true;
                         }
                     } else {
-                        System.out.println(String.format("SENDing %d %d:%d %s DROP", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime()));
-                        droppedPacket = true;
+                    	//Damage the packet here, either send it corrupt OR drop it from source.
+                    	if (Math.random() < 0.5) { //50% we corrupt and send
+                    		byte[] packetData = new Packet((short) 1,(short) (buffer.length + 12), 0, seqno, buffer).getData();
+                            DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);
+                            socket.send(packet);
+                            
+                            String text = String.format("SENDing. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+                        	if(droppedPacket) {
+                        		text = String.format("ReSend. %d %d:%d %s ERR", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime());
+                            }
+                        	
+                        	System.out.println(text);
+                    	} else { //50% we drop from source
+                    		System.out.println(String.format("SENDing %d %d:%d %s DROP", seqno, seqno * packet_size, seqno * packet_size + buffer.length,getTime()));
+                            droppedPacket = true;
+                    	}    
                     }
+                    damagePacket = false;
                 }
             }
 
@@ -169,6 +184,6 @@ public class Sender{
         }
         System.out.printf("Params: packet size: %d timeout %d corrupt data percent %.2f ip %s port %d", packet_size, timeout, corrupt_data, address, port);
         Sender sender = new Sender();
-        sender.sendFile("center_earth.txt");
+        sender.sendFile("eula.txt");
     }
 }
