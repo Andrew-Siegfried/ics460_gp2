@@ -30,7 +30,6 @@ public class Packet implements Serializable {
 
     //returns seriallized version of packet to be sent over datagram
     public byte[] getData(){
-        //https://stackoverflow.com/questions/2836646/java-serializable-object-to-byte-array
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutput out;
         byte[] dataPacket = new byte[0];

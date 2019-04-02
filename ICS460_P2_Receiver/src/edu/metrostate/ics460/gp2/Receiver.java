@@ -14,7 +14,7 @@ import java.net.UnknownHostException;
  * @author Michael, Andrew, Troy (Team 5)
  */
 
-public class Receiver{
+public class Receiver {
     private DatagramSocket socket;
     private boolean running;
     private static InetAddress address;
@@ -25,7 +25,7 @@ public class Receiver{
     final long startTime;
 
     /**
-     * Public constructor that creates an open socket on port 4445
+     * Public constructor that creates an open socket on a port
      */
     public Receiver() {
     	startTime = System.nanoTime();
@@ -64,11 +64,11 @@ public class Receiver{
                     continue;
                 }
 
-                if (Math.random() < corrupt_data) {
+                if (Math.random() < corrupt_data) { //Drop the ACK or send it back corrupt
                 	damagePacket = true;
                 }
                 
-                if(damagePacket == false) { //Return ACK CLEAN - if packet is not corrupt
+                if(damagePacket == false) { //Return ACK CLEAN - if packet is not corrupt..
                 	boolean damaged = false;
                 	String text = String.format("RECV %s %d RECV", getTime(), packets);
                 	if(droppedPacket) {
@@ -80,7 +80,7 @@ public class Receiver{
                     	if(droppedPacket) {
                         	text = String.format("DUPL %s %d CRPT", getTime(), packets);
                         }
-                    	damaged = true;
+                    	damaged = true; //Don't send back ACK, we need a new packet
                     }
                 	
                 	if(truePacket.seqno != packets) {
@@ -88,7 +88,7 @@ public class Receiver{
                     	if(droppedPacket) {
                         	text = String.format("DUPL %s %d !seq", getTime(), packets);
                         }
-                    	damaged = true;
+                    	damaged = true; //Don't send back ACK, we need a new packet
                     }
                 	
                 	droppedPacket = false;
@@ -99,8 +99,7 @@ public class Receiver{
 	                	packets++;
 	                    Packet response = new Packet((short) 0, (short) 8, truePacket.seqno);
 	                    byte[] responseData = response.getData();
-	                    
-	                    //System.out.println(String.format("SENDing ACKno %d ", response.ackno)); //test print
+	                    //send the good ACK back to address and port
 	                    InetAddress return_address = packet.getAddress();
 	                    DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, return_address, packet.getPort());
 	                    socket.send(responsePacket);
@@ -114,8 +113,8 @@ public class Receiver{
 	                    InetAddress return_address = packet.getAddress();
 	                    DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, return_address, packet.getPort());
 	                    socket.send(responsePacket);
-                        
-	                    System.out.println(String.format("SENDing ACK %d %s ERR", packets,getTime()));
+                        //send back the ACK as corrupt
+	                    System.out.println(String.format("SENDing ACK %d %s ERR", packets,getTime())); 
                 	} else { //50% we drop from source
                 		System.out.println(String.format("SENDing ACK %d %s DROP", packets,getTime()));
                     	droppedPacket = true;
@@ -128,7 +127,7 @@ public class Receiver{
             }
         }
         try {
-            byte[] result = byteArrayOutputStream.toByteArray();
+            byte[] result = byteArrayOutputStream.toByteArray(); //write everything to the output file
             OutputStream outputStream = new BufferedOutputStream(new FileOutputStream("output.txt"));
             outputStream.write(result);
             outputStream.close();
@@ -174,7 +173,7 @@ public class Receiver{
                     }
             }
         }
-        System.out.printf("Params: corrupt data percent %.2f ip %s port %d", corrupt_data, address, port);
+        System.out.printf("Params: corrupt data percent %.2f ip %s port %d\n", corrupt_data, address, port);//Print out the params
         Receiver receiver = new Receiver();
         receiver.loop();
     }

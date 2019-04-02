@@ -11,7 +11,7 @@ import java.util.Arrays;
  *
  * @author Michael, Andrew, Troy (Team 5)
  */
-public class Sender{
+public class Sender {
     private DatagramSocket socket;
     private static InetAddress address;
     private byte[] buffer;
@@ -25,7 +25,7 @@ public class Sender{
      * Public constructor that creates a new socket on the local network
      */
     public Sender() {
-        startTime = System.nanoTime();
+        startTime = System.nanoTime(); //start time of the program
         try {
             socket = new DatagramSocket();
             socket.setSoTimeout(timeout);
@@ -56,11 +56,11 @@ public class Sender{
                 int lastAck = -1;
                 while(missedPacket) {
 
-                    if (Math.random() < corrupt_data) {
+                    if (Math.random() < corrupt_data) { //percent chance to damage the packet and drop it or corrupt and send it
                     	damagePacket = true;
                     }
                     
-                    if(damagePacket == false) {
+                    if(damagePacket == false) { //We can send a valid packet to the receiver
                         byte[] packetData = new Packet((short) 0,(short) (buffer.length + 12), 0, seqno, buffer).getData();
 
                         DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);
@@ -76,10 +76,10 @@ public class Sender{
                         System.out.println(text);
                         try {
                         	boolean damaged = false;
-                            byte arr[] = new byte[1000]; //fixes not getting data from ACK
+                            byte arr[] = new byte[1000]; 
                             DatagramPacket responsePacket = new DatagramPacket(arr, arr.length);
                             socket.receive(responsePacket);
-                            Packet responseACK = Packet.generatePacket(responsePacket.getData());
+                            Packet responseACK = Packet.generatePacket(responsePacket.getData()); //get our ACK packet to test if its valid
 
                             String ackText = String.format("AckRcvd %d MoveWnd", seqno);
                             if(responseACK.cksum != 0) {
@@ -92,12 +92,12 @@ public class Sender{
 	                        	damaged = true;
 	                        } 
 	                        System.out.println(ackText);
-	                        if(damaged == false) {
+	                        
+	                        if(damaged == false) { //Non damaged ACK - increment the window
 	                        	 lastAck = responseACK.ackno;
-	                             //System.out.println(String.format("Ack INFO: %d %d %d", responseACK.cksum,responseACK.len,responseACK.ackno));
 	                             seqno++;
 	                        } else {
-	                        	missedPacket = true;
+	                        	missedPacket = true; //Damaged - need to send and receive a new ACK
 	                        }
                         } catch (SocketTimeoutException ex) {
                             System.out.println("TimeOut " + seqno);
@@ -139,7 +139,6 @@ public class Sender{
     public String getTime() {
         long milliseconds = (System.nanoTime() - startTime) / 1000000;
 
-        //return String.format("%02d:%02d.%d", ((milliseconds / (1000 * 60)) % 60), ((milliseconds / 1000) % 60), (milliseconds % 1000));
         return String.valueOf(milliseconds);
     }
 
@@ -147,7 +146,6 @@ public class Sender{
         try {
             address = InetAddress.getByName("localhost"); //assign localhost as default
         } catch (UnknownHostException e1) {
-            // TODO Auto-generated catch block
             e1.printStackTrace();
         }
         if (args.length < 1) {
@@ -175,14 +173,13 @@ public class Sender{
                         try {
                             address = InetAddress.getByName(args[i]);
                         } catch (UnknownHostException e) {
-                            // TODO Auto-generated catch block
                             e.printStackTrace();
                         }
                         port = Integer.parseInt(args[(i + 1)]);
                     }
             }
         }
-        System.out.printf("Params: packet size: %d timeout %d corrupt data percent %.2f ip %s port %d", packet_size, timeout, corrupt_data, address, port);
+        System.out.printf("Params: packet size: %d timeout %d corrupt data percent %.2f ip %s port %d\n", packet_size, timeout, corrupt_data, address, port); //Print out the params
         Sender sender = new Sender();
         sender.sendFile("eula.txt");
     }
