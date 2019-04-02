@@ -126,7 +126,6 @@ public class Sender {
             }
 
             buffer = new byte[0]; //we have sent everything, send a signal to the receiver that this is the ending packet
-            System.out.println(buffer.length);
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, 4445);
             socket.send(packet);
             socket.close();
